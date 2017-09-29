@@ -89,7 +89,7 @@ public class ESTransportMgr {
 		return transportClient.prepareGet(index, type, id).get();
 	}
 	public SearchResponse matchSearch(String index, String type, String field, String word) throws InterruptedException, ExecutionException {
-		return transportClient.prepareSearch(index).setTypes(type).setQuery(QueryBuilders.matchQuery(field, word)).execute().get();
+		return transportClient.prepareSearch(index).setTypes(type).setQuery(QueryBuilders.matchQuery(field, word)).execute().actionGet();
 	}
 	
 	public DeleteResponse remove(String index, String type, String id) {

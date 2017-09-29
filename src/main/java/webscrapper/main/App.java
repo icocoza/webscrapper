@@ -2,18 +2,22 @@ package webscrapper.main;
 
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.search.SearchHit;
 
 import lib.mesg.bot.DbBotManager;
+import lib.mesg.bot.food.EFoodCmdType;
+import lib.mesg.bot.table.TblKeyword;
+import lib.mesg.module.morpheme.mecab.MorphemeParser;
 import lib.mesg.module.util.ResFileLoader;
 import webscrapper.elssearch.ElasticSearchData;
-import webscrapper.elssearch.ESJestMgr;
+import webscrapper.morpheme.Morpheme;
+import webscrapper.bot.BotDataController;
+import webscrapper.bot.BotDataController.BotData;
+import webscrapper.bot.EBotDataType;
 import webscrapper.elssearch.ESTransportMgr;
 import webscrapper.scrapper.FoodWebScrapper;
 import webscrapper.scrapper.GroceryWebScrapper;
@@ -28,6 +32,7 @@ public class App
 	//static Logger logger=Logger.getLogger(App.class); 
     public static void main( String[] args )
     {
+    	System.loadLibrary ( "MeCab"); 
         System.out.println( "Hello Scrapper!" );
         //loadGrocery(true);
         //loadFood(true);
@@ -35,9 +40,11 @@ public class App
         //loadFood(false);
         //loadProceedFood(false);
         
-        //testElastic();
-        testElasticSearchClient();
+        //testElasticSearchClient();
         //addTransportDataToElasticSearch() ;
+        //testElasticSearch();
+        //doTestMorpheme();
+        doChatBotTest();
     }
     
     private static void loadGrocery(boolean bList) {
@@ -117,23 +124,32 @@ public class App
 		}
     }
     
-    private static void testElastic() {
- 
+    private static void testElasticSearch() {
+    	try {
+			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
+			SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", "오뚜기");
+			System.out.print(res.getHits().getTotalHits()+"");
+			System.out.print("done");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
     }
     
     private static void testElasticSearchClient() {
     	try {
 			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
-			/*ESTransportMgr.getInst().deleteIndex("food");
+			try{
+				ESTransportMgr.getInst().deleteIndex("food");
+			}catch(Exception e) {}
 			ResFileLoader.getInst().loadConfig("/elastic_foodsettings.cfg");
 			String settings = ResFileLoader.getInst().getAllText();
 			ESTransportMgr.getInst().createIndex("food", settings);
 			ResFileLoader.getInst().loadConfig("/elastic_foodmappings.cfg");
 			String mappings = ResFileLoader.getInst().getAllText();
-			ESTransportMgr.getInst().putMappings("food", "foodnut", mappings);*/
-			SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", "새우깡");
-			System.out.print(res.getHits().getTotalHits()+"");
-			
+			ESTransportMgr.getInst().putMappings("food", "foodnut", mappings);
+			//SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", "새우깡");
+			//System.out.print(res.getHits().getTotalHits()+"");
+			System.out.print("done");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -158,6 +174,52 @@ public class App
 			esd.addFile();
 			esd.addDb();
 		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    }
+    
+    private static void doTestMorpheme() {
+    	//System.loadLibrary("libMeCab.jar");
+    	new Morpheme().doParse("비싼새우깡은 맛있다");
+    	new Morpheme().doParse("매운김치찌개는 맛있다");
+    	new Morpheme().doParse("김치찌개 콩국수 순두부");
+    	new Morpheme().doParse("매운새우깡의 칼로리는 얼마인가요?");
+    	new Morpheme().doParse("일반 새우깡, 쌀새우깡의 열량은 얼마에요?");
+    	new Morpheme().doParse("김치찌게에는 어떤 영양소가 있나요?");
+    	new Morpheme().doParse("라면의 나트륨과 단백질 함량은?");
+    	new Morpheme().doParse("라면의 열량과, 새우깡의 나트륨은?");
+    }
+    
+    private static void doChatBotTest() {
+    	try {
+    		IAppConfig.loadConfig();
+			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
+			DbBotManager.getInst().init(IAppConfig.mysql_url, IAppConfig.mysql_dbname, IAppConfig.mysql_user, IAppConfig.mysql_pw, 4, 32);
+			
+			List<String> list = MorphemeParser.getInst().parseNounType("쌀새우깡의 열량은 얼마입니까?");
+			BotDataController bdc = new BotDataController();
+			
+			for(String keyword : list) {
+				TblKeyword rec = DbBotManager.getInst().getKeyword(keyword, "food");
+				if(rec==TblKeyword.Empty)
+					continue;
+				System.out.println(rec.toString());
+				if(rec.type == EFoodCmdType.eTitle && bdc.hasKeyword(rec.keyword)==false) {
+					SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", rec.keyword);
+					for(SearchHit sh : res.getHits())
+						System.out.println((String)sh.getField("title").getValue());
+					if(res.getHits().getTotalHits()>0)
+						bdc.add(rec.keyword, res);
+				}else if(rec.type == EFoodCmdType.eNutrient)
+					bdc.addProperty(rec.keyword);
+			}
+			List<BotData> dataList = bdc.getList();
+/*			for(BotData data : dataList)
+			{
+				if(data.type == EBotDataType.eSearchResult)
+					
+			}*/
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
     }

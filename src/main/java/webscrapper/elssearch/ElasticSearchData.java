@@ -39,6 +39,7 @@ public class ElasticSearchData {
 		//addDb();
 	}
 	
+	static int count=0;
 	private void addData(String index, String type, String id, String title, String[] items) {
 		JSONArray jarr = new JSONArray(); 
 		for(int i=2; i<items.length; i++) {
@@ -58,7 +59,7 @@ public class ElasticSearchData {
 		jobj.put("title", title);
 		jobj.put("nutrient", jarr);
 		IndexResponse ir = ESTransportMgr.getInst().insert(jobj.toJSONString(), index, type, id);
-		System.out.println(ir.getId());
+		System.out.println(ir.getId() + ":" + (++count));
 	}
 	
 	private void addMapTitle(String title) {
@@ -66,8 +67,17 @@ public class ElasticSearchData {
 		for(String comma : commas) {
 			String[] units = comma.split("/");
 			for(String unit : units) {
-				if(unit.length()>0 && wordCollector.containsKey(unit.trim())==false)
-					wordCollector.put(unit.trim(), EFoodCmdType.eTitle);
+				unit = unit.trim();
+				if(unit.contains("(")) {
+					String word = this.extractOutterBrack(unit);
+					if(word.trim().length()>0)
+						wordCollector.put(word, EFoodCmdType.eTitle);
+					word = this.extractInnerBrack(unit);
+					if(word.trim().length()>0)
+						wordCollector.put(word, EFoodCmdType.eTitle);
+				}
+				else if(unit.length()>0 && wordCollector.containsKey(unit)==false)
+					wordCollector.put(unit, EFoodCmdType.eTitle);
 			}
 		}
 	}
@@ -101,4 +111,16 @@ public class ElasticSearchData {
 			return 0f;
 		}
 	}
+	
+	private String extractOutterBrack(String s) {
+		try{
+		return s.substring(0, s.indexOf('('));
+		}catch(Exception e) {	return "";	}
+	}
+	private String extractInnerBrack(String s) {
+		try{
+			return s.substring(s.indexOf('(')+1, s.indexOf(')'));
+		}catch(Exception e){	return "";}
+	}
+
 }
