@@ -11,14 +11,14 @@ import org.elasticsearch.search.SearchHit;
 import lib.mesg.bot.DbBotManager;
 import lib.mesg.bot.food.EFoodCmdType;
 import lib.mesg.bot.table.TblKeyword;
+import lib.mesg.module.elasticsearch.ElasticTransportMgr;
 import lib.mesg.module.morpheme.mecab.MorphemeParser;
+import lib.mesg.module.util.Crypto;
 import lib.mesg.module.util.ResFileLoader;
 import webscrapper.elssearch.ElasticSearchData;
 import webscrapper.morpheme.Morpheme;
 import webscrapper.bot.BotDataController;
 import webscrapper.bot.BotDataController.BotData;
-import webscrapper.bot.EBotDataType;
-import webscrapper.elssearch.ESTransportMgr;
 import webscrapper.scrapper.FoodWebScrapper;
 import webscrapper.scrapper.GroceryWebScrapper;
 import webscrapper.scrapper.ProceedFoodWebScrapper;
@@ -32,8 +32,8 @@ public class App
 	//static Logger logger=Logger.getLogger(App.class); 
     public static void main( String[] args )
     {
-    	System.loadLibrary ( "MeCab"); 
-        System.out.println( "Hello Scrapper!" );
+    	//System.loadLibrary ( "MeCab"); 
+        //System.out.println( "Hello Scrapper!" );
         //loadGrocery(true);
         //loadFood(true);
         //loadProceedFood(true);
@@ -44,7 +44,7 @@ public class App
         //addTransportDataToElasticSearch() ;
         //testElasticSearch();
         //doTestMorpheme();
-        doChatBotTest();
+        //doChatBotTest();
     }
     
     private static void loadGrocery(boolean bList) {
@@ -126,8 +126,8 @@ public class App
     
     private static void testElasticSearch() {
     	try {
-			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
-			SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", "¿À¶Ñ±â");
+			ElasticTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
+			SearchResponse res = ElasticTransportMgr.getInst().matchSearch("food", "foodnut", "title", "¿À¶Ñ±â");
 			System.out.print(res.getHits().getTotalHits()+"");
 			System.out.print("done");
 		} catch (Exception e) {
@@ -137,17 +137,17 @@ public class App
     
     private static void testElasticSearchClient() {
     	try {
-			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
+			ElasticTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
 			try{
-				ESTransportMgr.getInst().deleteIndex("food");
+				ElasticTransportMgr.getInst().deleteIndex("food");
 			}catch(Exception e) {}
 			ResFileLoader.getInst().loadConfig("/elastic_foodsettings.cfg");
 			String settings = ResFileLoader.getInst().getAllText();
-			ESTransportMgr.getInst().createIndex("food", settings);
+			ElasticTransportMgr.getInst().createIndex("food", settings);
 			ResFileLoader.getInst().loadConfig("/elastic_foodmappings.cfg");
 			String mappings = ResFileLoader.getInst().getAllText();
-			ESTransportMgr.getInst().putMappings("food", "foodnut", mappings);
-			//SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", "»õ¿ì±ø");
+			ElasticTransportMgr.getInst().putMappings("food", "foodnut", mappings);
+			//SearchResponse res = ElasticTransportMgr.getInst().matchSearch("food", "foodnut", "title", "»õ¿ì±ø");
 			//System.out.print(res.getHits().getTotalHits()+"");
 			System.out.print("done");
 		} catch (Exception e) {
@@ -162,7 +162,7 @@ public class App
         DbBotManager.getInst().init(IAppConfig.mysql_url, IAppConfig.mysql_dbname, IAppConfig.mysql_user, IAppConfig.mysql_pw, 4, 32);
         
     	try {
-			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
+			ElasticTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
@@ -193,7 +193,7 @@ public class App
     private static void doChatBotTest() {
     	try {
     		IAppConfig.loadConfig();
-			ESTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
+			ElasticTransportMgr.getInst().init("foodingredient-cluster", "food-node-1", "localhost", 9300);
 			DbBotManager.getInst().init(IAppConfig.mysql_url, IAppConfig.mysql_dbname, IAppConfig.mysql_user, IAppConfig.mysql_pw, 4, 32);
 			
 			List<String> list = MorphemeParser.getInst().parseNounType("½Ò»õ¿ì±øÀÇ ¿­·®Àº ¾ó¸¶ÀÔ´Ï±î?");
@@ -205,7 +205,7 @@ public class App
 					continue;
 				System.out.println(rec.toString());
 				if(rec.type == EFoodCmdType.eTitle && bdc.hasKeyword(rec.keyword)==false) {
-					SearchResponse res = ESTransportMgr.getInst().matchSearch("food", "foodnut", "title", rec.keyword);
+					SearchResponse res = ElasticTransportMgr.getInst().matchSearch("food", "foodnut", "title", rec.keyword);
 					for(SearchHit sh : res.getHits())
 						System.out.println((String)sh.getField("title").getValue());
 					if(res.getHits().getTotalHits()>0)

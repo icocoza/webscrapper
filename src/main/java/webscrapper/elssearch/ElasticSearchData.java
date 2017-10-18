@@ -15,6 +15,7 @@ import org.json.simple.JSONObject;
 
 import lib.mesg.bot.DbBotManager;
 import lib.mesg.bot.food.EFoodCmdType;
+import lib.mesg.module.elasticsearch.ElasticTransportMgr;
 
 public class ElasticSearchData {
 	private Map<String, EFoodCmdType> wordCollector = new HashMap<>();
@@ -58,7 +59,7 @@ public class ElasticSearchData {
 		JSONObject jobj = new JSONObject();
 		jobj.put("title", title);
 		jobj.put("nutrient", jarr);
-		IndexResponse ir = ESTransportMgr.getInst().insert(jobj.toJSONString(), index, type, id);
+		IndexResponse ir = ElasticTransportMgr.getInst().insert(jobj.toJSONString(), index, type, id);
 		System.out.println(ir.getId() + ":" + (++count));
 	}
 	
